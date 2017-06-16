@@ -99,51 +99,6 @@ func generateCode(fileName, prefix string) error {
 	_, err = file.WriteAt([]byte(code), int64(indexEndClass))
 	checkErr(err)
 
-	//continue to find variable's name.
-	//for index, char := range data {
-	//	// finding the varible
-	//	switch char {
-	//	case startVar[0]:
-	//		// write template getter setter
-	//		if vName != nil {
-	//			if len(template) == 0 {
-	//				template = getSetterGetter(prefix, string(vName))
-	//			} else {
-	//				template = template + "\n" + getSetterGetter(prefix, string(vName))
-	//			}
-	//		}
-
-	//		// reset vName to empty byte, because we found new variable
-	//		vName = nil
-	//		foundVar = true
-
-	//		// avoid $ being added to vName
-	//		continue
-	//	case endVar[0]:
-	//		foundVar = false
-	//	case endClass[0]:
-	//		// we call this again for our last variable
-	//		if vName != nil {
-	//			if len(template) == 0 {
-	//				template = getSetterGetter(prefix, string(vName))
-	//			} else {
-	//				template = template + "\n" + getSetterGetter(prefix, string(vName))
-	//			}
-	//		}
-	//		template = template + "\n}"
-	//		// insert all getSet before the end of data
-	//		_, err := file.WriteAt([]byte(template), int64(index))
-	//		checkErr(err)
-	//		break
-	//	}
-
-	//	// getting the varible name.
-	//	if foundVar {
-	//		vName = append(vName, char)
-	//	}
-
-	//}
-
 	fmt.Println("Succes generate code")
 	return nil
 
