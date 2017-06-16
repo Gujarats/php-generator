@@ -46,33 +46,35 @@ class TestClass{
     private $newVar;
     private $TestVar;
 
+    public function __construct($myVar,$newVaria,$newVar,$TestVar){
+        $this->myVar=$myVar;
+        $this->newVaria=$newVaria;
+        $this->newVar=$newVar;
+        $this->TestVar=$TestVar;
+    }
     public function getMyVar(){
         return $this->myVar;
     }
     public function setMyVar($myVar){
         $this->myVar=$myVar;
     }
-
     public function getNewVaria(){
         return $this->newVaria;
     }
     public function setNewVaria($newVaria){
         $this->newVaria=$newVaria;
     }
-
     public function getNewVar(){
         return $this->newVar;
     }
     public function setNewVar($newVar){
         $this->newVar=$newVar;
     }
-
     public function getTestVar(){
         return $this->TestVar;
     }
     public function setTestVar($TestVar){
         $this->TestVar=$TestVar;
     }
-
 }
 ```
