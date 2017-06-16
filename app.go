@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -28,9 +29,10 @@ func main() {
 		},
 	}
 
+	// commands
 	app.Commands = []cli.Command{
 
-		//first command load column data
+		//generate code
 		{
 			Name:    "generate",
 			Aliases: []string{"g"},
@@ -42,7 +44,7 @@ func main() {
 					return nil
 				}
 
-				generateSetGet(fileName, prefix)
+				generateCode(fileName, prefix)
 
 				return nil
 			},
@@ -53,97 +55,115 @@ func main() {
 
 }
 
-func generateSetGet(fileName, prefix string) {
-	// path
+// generate code for the specify file with prefix -> {public,private,protected}.
+func generateCode(fileName, prefix string) error {
 	filePath := path.Join(getAbsulutePath(), fileName)
-	// open file
 	file, err := os.OpenFile(filePath, os.O_RDWR, 0777)
 	checkErr(err)
 
 	// read data with specific len data
 	data := make([]byte, 1024)
 
-	startVar := "$"
-	endVar := ";"
-	endClass := "}"
-	foundVar := false
+	// for searching variable's name
+	//startVar := "$"
+	//endVar := ";"
+	//endClass := "}"
+	//foundVar := false
 
 	// getting the varible name from file
-	var vName []byte
+	//var vName []byte
 	// hold string getter and setter result from all varible
-	var template string
+	//var template string
 
-	// finding the class string
+	// reading file's data to store to our variable => data
 	n, err := file.Read(data)
 	checkErr(err)
 	if n == 0 {
-		return
+		return errors.New("Empty selected file")
 	}
 
-	// contine to find variable's name.
-	for index, char := range data {
-		// finding the varible
-		if char == startVar[0] {
-			// write template getter setter
-			if vName != nil {
-				if len(template) == 0 {
-					template = getSetterGetter(prefix, string(vName))
-				} else {
-					template = template + "\n" + getSetterGetter(prefix, string(vName))
-				}
-			}
+	// get variable's name => $varNames
+	// and the last index of => '}' from our data
+	varNames, indexEndClass := getVarNames(data)
+	var code string
 
-			// reset vName to empty byte, because we found new variable
-			vName = nil
-			foundVar = true
-
-			// avoid $ being added to vName
-			continue
-		}
-
-		// end of variable
-		if char == endVar[0] {
-			foundVar = false
-		}
-
-		// getting the varible name.
-		if foundVar {
-			vName = append(vName, char)
-		}
-
-		// write all template to a file
-		if char == endClass[0] {
-			// we call this again for our last variable
-			if vName != nil {
-				if len(template) == 0 {
-					template = getSetterGetter(prefix, string(vName))
-				} else {
-					template = template + "\n" + getSetterGetter(prefix, string(vName))
-				}
-			}
-			template = template + "\n}"
-			// insert all getSet before the end of data
-			_, err := file.WriteAt([]byte(template), int64(index))
-			checkErr(err)
-		}
-
+	// generate our code
+	code = constructor(varNames)
+	for _, varName := range varNames {
+		code += getSetterGetter(prefix, varName)
 	}
+	code += "\n}"
 
-	fmt.Println("Succes generate getter and setter")
+	// write generated code to file
+
+	_, err = file.WriteAt([]byte(code), int64(indexEndClass))
+	checkErr(err)
+
+	//continue to find variable's name.
+	//for index, char := range data {
+	//	// finding the varible
+	//	switch char {
+	//	case startVar[0]:
+	//		// write template getter setter
+	//		if vName != nil {
+	//			if len(template) == 0 {
+	//				template = getSetterGetter(prefix, string(vName))
+	//			} else {
+	//				template = template + "\n" + getSetterGetter(prefix, string(vName))
+	//			}
+	//		}
+
+	//		// reset vName to empty byte, because we found new variable
+	//		vName = nil
+	//		foundVar = true
+
+	//		// avoid $ being added to vName
+	//		continue
+	//	case endVar[0]:
+	//		foundVar = false
+	//	case endClass[0]:
+	//		// we call this again for our last variable
+	//		if vName != nil {
+	//			if len(template) == 0 {
+	//				template = getSetterGetter(prefix, string(vName))
+	//			} else {
+	//				template = template + "\n" + getSetterGetter(prefix, string(vName))
+	//			}
+	//		}
+	//		template = template + "\n}"
+	//		// insert all getSet before the end of data
+	//		_, err := file.WriteAt([]byte(template), int64(index))
+	//		checkErr(err)
+	//		break
+	//	}
+
+	//	// getting the varible name.
+	//	if foundVar {
+	//		vName = append(vName, char)
+	//	}
+
+	//}
+
+	fmt.Println("Succes generate code")
+	return nil
 
 }
 
-func getVarNames(datas []byte) []string {
+// getting all variable names in the classs.
+// return those names and the indexEndClass --> '}'
+func getVarNames(datas []byte) ([]string, int) {
 	startVar := "$"
 	endVar := ";"
 	endClass := "}"
 	foundVar := false
+
+	var indexEndClass int
 
 	// getting the varible name from file
 	var vName []byte
 	var allName []string
 
-	for _, data := range datas {
+	for index, data := range datas {
 		switch data {
 		case startVar[0]:
 			if vName != nil {
@@ -159,6 +179,7 @@ func getVarNames(datas []byte) []string {
 				allName = append(allName, string(vName))
 			}
 			vName = nil
+			indexEndClass = index
 			break
 		}
 
@@ -168,7 +189,40 @@ func getVarNames(datas []byte) []string {
 
 	}
 
-	return allName
+	return allName, indexEndClass
+}
+
+// Create constructor
+func constructor(arguments []string) string {
+	space := "    "
+	var result string
+
+	result = space + "public function __construct(" + getArgments(arguments) + "){\n" +
+		setConstructor(arguments) + space + "}\n"
+	return result
+}
+
+// Create $his->variable for the constructor
+func setConstructor(arguments []string) string {
+	space := "    "
+	var result string
+	for _, argument := range arguments {
+		result += space + space + "$this->" + argument + "=$" + argument + ";\n"
+	}
+	return result
+}
+
+// create arguments for constructor
+func getArgments(arguments []string) string {
+	var result string
+	for index, argument := range arguments {
+		if index != len(arguments)-1 {
+			result += "$" + argument + ","
+		} else {
+			result += "$" + argument // last argument without comma.
+		}
+	}
+	return result
 }
 
 // get The current absolute path on the active shell
@@ -181,7 +235,8 @@ func getAbsulutePath() string {
 	return dir
 }
 
-// Creating getter and setter template.
+// Creating getter and setter template. with prefix is the first modifier such as public or private or protected.
+// name is the name of the function
 func getSetterGetter(prefix, name string) string {
 	space := "    "
 	// change the firsChar to UpperCase
